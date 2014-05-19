@@ -43,13 +43,13 @@ namespace HPHP{
             mo->type = MSGPACK_OBJECT_DOUBLE;
             mo->via.dec = var.toDouble();
         } else if (var.isInteger()) {
-            int64_t d = var.toInt64();
-            if ( d < 0 ){
+             int64_t d = var.toInt64();
+            if ( d > 0 ){
                 mo->type = MSGPACK_OBJECT_POSITIVE_INTEGER;
-                mo->via.u64 = static_cast<uint64_t>(d);
+                mo->via.u64 = d;
             } else {
                 mo->type = MSGPACK_OBJECT_NEGATIVE_INTEGER;
-                mo->via.i64 = static_cast<int64_t>(d);
+                mo->via.i64 = d;
             }
         } else if (var.isString()) {
             String str = var.toString();
@@ -94,7 +94,7 @@ namespace HPHP{
     static Variant msgpack_to_variant ( msgpack_object *mo )  {
         switch (mo->type) {
             case MSGPACK_OBJECT_NIL:
-                return NULL;
+                return init_null();
 
             case MSGPACK_OBJECT_BOOLEAN:
                 return (mo->via.boolean) ? true : false;
@@ -104,11 +104,11 @@ namespace HPHP{
                 // class as opposed to the subclass Integer, since
                 // only the former takes 64-bit inputs. Using the
                 // Integer subclass will truncate 64-bit values.
-                return static_cast<uint64_t>(mo->via.u64);
+                return mo->via.u64;
 
             case MSGPACK_OBJECT_NEGATIVE_INTEGER:
                 // See comment for MSGPACK_OBJECT_POSITIVE_INTEGER
-                return static_cast<int64_t>(mo->via.i64);
+                return mo->via.i64;
 
             case MSGPACK_OBJECT_DOUBLE:
                 return mo->via.dec;
@@ -122,7 +122,12 @@ namespace HPHP{
                                        }
 
             case MSGPACK_OBJECT_RAW:
-                                       return String(mo->via.raw.ptr, mo->via.raw.size,CopyString);
+                                       if(mo->via.raw.size <= 0 )
+                                       {
+                                            return String("\0", mo->via.raw.size,CopyString);
+                                       }else{
+                                            return String(mo->via.raw.ptr, mo->via.raw.size,CopyString);
+                                       }
 
             case MSGPACK_OBJECT_MAP: {
                                          Array array = Array::Create();
@@ -136,7 +141,7 @@ namespace HPHP{
 
             default:
                                      raise_warning("Encountered unknown MesssagePack object type");
-                                     return NULL;
+                                     return init_null();
         }
     }
 
